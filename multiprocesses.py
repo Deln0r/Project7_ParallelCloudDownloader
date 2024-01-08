@@ -28,3 +28,27 @@ def get_files(resource):
     res = getfilelist.GetFileList(resource)
     files_list = res['fileList'][0]
     return files_list
+def main ():
+
+    files = get_files(resource)
+    #add files info into the queue
+    myqueue = JoinableQueue()
+    for item in files['files']:
+        myqueue.put(item)
+
+    processes = []
+    for id in range(PROCESSES_POOL_SIZE):
+        p = Process(target=mydownloader,
+                    args=(myqueue,))
+        p.daemon = True
+        p.start()
+
+    start_time = time.monotonic()
+    myqueue.join()
+    total_exec_time = time.monotonic() - start_time
+
+    print(f'Time taken to download: {total_exec_time:.2f} seconds')
+
+
+if __name__ == '__main__':
+    main()
