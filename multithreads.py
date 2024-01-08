@@ -13,7 +13,7 @@ resource = {
     "fields": "files(name,id,webContentLink)",
 }
 
-class DownlaodWorker(Thread):
+class DownloadWorker(Thread):
 
     def __init__(self, name, queue):
         Thread.__init__(self)
@@ -31,3 +31,29 @@ class DownlaodWorker(Thread):
             finally:
                 self.queue.task_done()
 
+def main():
+    def get_files(resource):
+        #global files_list
+        res = getfilelist.GetFileList(resource)
+        files_list = res['fileList'][0]
+        return files_list
+
+    start_time = time.monotonic()
+
+    files = get_files(resource)
+
+    #add files info into the queue
+    queue = Queue()
+    for item in files['files']:
+        queue.put(item)
+
+    for i in range (THREAD_POOL_SIZE):
+        worker = DownloadWorker("Thread {}".format(i+1),queue)
+        worker.daemon = True
+        worker.start()
+
+    queue.join()
+    end_time = time.monotonic()
+    print('Time taken to download: {} seconds'.
+          format( end_time - start_time))
+main()
