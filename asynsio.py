@@ -32,3 +32,28 @@ def get_files(resource):
     res = getfilelist.GetFileList(resource)
     files_list = res['fileList'][0]
     return files_list
+async def main ():
+    files = get_files(resource)
+    #add files info into the queue
+    myqueue = asyncio.Queue()
+    for item in files['files']:
+        myqueue.put_nowait(item)
+
+    tasks = []
+    for id in range(TASK_POOL_SIZE):
+        task = asyncio.create_task(
+            mydownloader(f'Task-{id+1}', myqueue))
+        tasks.append(task)
+
+    start_time = time.monotonic()
+    await myqueue.join()
+    total_exec_time = time.monotonic() - start_time
+
+    for task in tasks:
+        task.cancel()
+
+    await asyncio.gather(*tasks, return_exceptions=True)
+
+    print(f'Time taken to download: {total_exec_time:.2f} seconds')
+
+asyncio.run(main())
